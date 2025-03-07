@@ -1,109 +1,100 @@
 import numpy as np
 from sklearn.preprocessing import PolynomialFeatures
 import matplotlib.pyplot as plt
+from scipy.special import logsumexp
 
-class WeightedGMM():
+class WeightedGMM:
     def __init__(self, n_components, max_iter=100, tol=1e-4):
         self.n_components = n_components
         self.max_iter = max_iter
         self.tol = tol
-
+        
     def fit(self, X, sample_weights=None):
-        """训练 GMM"""
         n_samples, n_features = X.shape
         sample_weights = np.ones(n_samples) if sample_weights is None else sample_weights
         sample_weights /= np.sum(sample_weights)
-
-        # 初始化 GMM 参数
+        
+        # 初始化参数
         np.random.seed(42)
-        random_idx = np.random.choice(n_samples, self.n_components, replace=False)
-        self.means_ = X[random_idx]
-        self.covariances_ = np.array([np.cov(X.T) + np.eye(n_features) * 1e-2 for _ in range(self.n_components)])
+        self.means_ = X[np.random.choice(n_samples, self.n_components, replace=False)]
+        self.covariances_ = np.array([np.cov(X.T) + 1e-6*np.eye(n_features) for _ in range(self.n_components)])
         self.weights_ = np.ones(self.n_components) / self.n_components
-
+        
         for _ in range(self.max_iter):
-            # E 步：计算责任度
-            responsibilities = np.zeros((n_samples, self.n_components))
+            # E-step
+            log_resp = np.zeros((n_samples, self.n_components))
             for k in range(self.n_components):
-                responsibilities[:, k] = self.weights_[k] * self._gaussian_pdf(X, self.means_[k], self.covariances_[k])
+                log_resp[:, k] = np.log(self.weights_[k] + 1e-10) + self._log_gaussian_pdf(X, self.means_[k], self.covariances_[k])
             
-            # 对责任度进行归一化
-            responsibilities_sum = np.sum(responsibilities, axis=1, keepdims=True)
-            responsibilities_sum = np.maximum(responsibilities_sum, 1e-6)  # 防止除零
-            responsibilities /= responsibilities_sum
-
-            # 修复 NaN 和 Inf
-            responsibilities = np.nan_to_num(responsibilities, nan=0.0, posinf=1.0, neginf=0.0)
-
-            # M 步：更新参数
+            log_resp -= logsumexp(log_resp, axis=1, keepdims=True)
+            resp = np.exp(log_resp)
+            
+            # M-step
             for k in range(self.n_components):
-                gamma_w = sample_weights * responsibilities[:, k]  # 加权责任度
+                gamma_w = sample_weights * resp[:, k]
                 Nk = np.sum(gamma_w)
-
-                self.means_[k] = np.sum(gamma_w[:, np.newaxis] * X, axis=0) / Nk
+                
+                self.means_[k] = np.sum(gamma_w[:, None] * X, axis=0) / Nk
                 diff = X - self.means_[k]
-                self.covariances_[k] = (diff.T @ (gamma_w[:, np.newaxis] * diff)) / Nk + np.eye(n_features) * 1e-6
-                self.weights_[k] = Nk / np.sum(sample_weights)
-
-    def _gaussian_pdf(self, X, mean, cov):
-        """计算高斯分布的概率密度"""
-        d = X.shape[1]
-        cov_inv = np.linalg.inv(cov + 1e-6 * np.eye(d))  # 避免奇异矩阵
-        det_cov = np.linalg.det(cov + 1e-6 * np.eye(d))
-        norm_factor = 1 / (np.sqrt((2 * np.pi) ** d * det_cov))
+                self.covariances_[k] = (diff.T * gamma_w) @ diff / Nk + 1e-6*np.eye(n_features)
+                self.weights_[k] = Nk
+        
+    def _log_gaussian_pdf(self, X, mean, cov):
+        n_features = X.shape[1]
+        cov_inv = np.linalg.inv(cov)
+        log_det = np.log(np.linalg.det(cov) + 1e-10)
         diff = X - mean
-        exp_term = np.exp(-0.5 * np.sum(diff @ cov_inv * diff, axis=1))
-        return norm_factor * exp_term
-
+        return -0.5 * (n_features * np.log(2 * np.pi) + log_det + np.sum(diff @ cov_inv * diff, axis=1))
+    
     def conditional_sample(self, states):
-        """给定多个状态，从条件分布 P(a | s) 采样"""
-        state_dim = states.shape[1] 
-        num_samples = states.shape[0]
+        state_dim = states.shape[1]
         action_dim = self.means_.shape[1] - state_dim
-
-        conditional_means = np.zeros((num_samples, action_dim))
-        conditional_covs = np.zeros((num_samples, action_dim, action_dim))
-        component_probs = np.zeros((num_samples, self.n_components))
-
+        n_samples = states.shape[0]
+        
+        # 计算每个组件的后验概率
+        log_component_probs = np.zeros((n_samples, self.n_components))
         for k in range(self.n_components):
-            mu_s, mu_a = self.means_[k, :state_dim], self.means_[k, state_dim:]
-            Sigma_ss = self.covariances_[k, :state_dim, :state_dim]
-            Sigma_sa = self.covariances_[k, :state_dim, state_dim:]
-            Sigma_as = self.covariances_[k, state_dim:, :state_dim]
-            Sigma_aa = self.covariances_[k, state_dim:, state_dim:]
+            mu_s = self.means_[k, :state_dim]
+            Sigma_ss = self.covariances_[k, :state_dim, :state_dim] + 1e-6*np.eye(state_dim)
+            Sigma_ss_inv = np.linalg.inv(Sigma_ss)
             
-            # 避免奇异矩阵
-            Sigma_ss_inv = np.linalg.inv(Sigma_ss + 1e-6 * np.eye(state_dim))
-            mu_cond = mu_a.reshape(-1,1) + Sigma_as @ Sigma_ss_inv @ (states.T - mu_s.reshape(-1, 1))
-            mu_cond = mu_cond.T  # 变回 (num_samples, action_dim)
-
-            Sigma_cond = Sigma_aa - Sigma_as @ Sigma_ss_inv @ Sigma_sa
-            conditional_means += self.weights_[k] * mu_cond
-            conditional_covs += self.weights_[k] * Sigma_cond
-
-            # 使用对数变换计算概率（避免数值溢出）
-            log_component_probs = np.log(self.weights_[k] * np.exp(-0.5 * np.sum((states - mu_s) @ Sigma_ss_inv * (states - mu_s), axis=1)) + 1e-10)
-
-            component_probs[:, k] = log_component_probs
-
-        # 使用对数概率进行归一化
-        log_component_probs_sum = np.sum(component_probs, axis=1, keepdims=True)
-        log_component_probs_sum = np.maximum(log_component_probs_sum, 1e-6)  # 防止除零
-        component_probs -= log_component_probs_sum  # 对数空间中减去总和
-        component_probs = np.exp(component_probs)  # 转回原始空间
-
-        # 修复 NaN 和 Inf
-        component_probs = np.nan_to_num(component_probs, nan=0.0, posinf=1.0, neginf=0.0)
-
-        # 确保概率和为 1
-        component_probs /= np.sum(component_probs, axis=1, keepdims=True)
+            # 完整的高斯对数概率
+            log_det = np.log(np.linalg.det(Sigma_ss))
+            log_norm = 0.5 * (state_dim * np.log(2 * np.pi) + log_det)
+            diff = states - mu_s
+            mahalanobis = np.sum(diff @ Sigma_ss_inv * diff, axis=1)
+            
+            log_p_sk = -0.5 * mahalanobis - log_norm
+            log_component_probs[:, k] = np.log(self.weights_[k] + 1e-10) + log_p_sk
+        
+        # 归一化
+        log_component_probs -= logsumexp(log_component_probs, axis=1, keepdims=True)
+        component_probs = np.exp(log_component_probs)
+        component_probs /= component_probs.sum(axis=1, keepdims=True)
+        
         # 采样
-        chosen_components = [np.random.choice(self.n_components, p=component_probs[i]) for i in range(num_samples)]
-        actions = np.array([np.random.multivariate_normal(conditional_means[i], conditional_covs[i]) for i in range(num_samples)])
-
+        actions = np.zeros((n_samples, action_dim))
+        for i in range(n_samples):
+            k = np.random.choice(self.n_components, p=component_probs[i])
+            
+            # 条件分布参数
+            mu_s = self.means_[k, :state_dim]
+            mu_a = self.means_[k, state_dim:]
+            Sigma_sa = self.covariances_[k, :state_dim, state_dim:]
+            Sigma_ss = self.covariances_[k, :state_dim, :state_dim] + 1e-6*np.eye(state_dim)
+            Sigma_aa = self.covariances_[k, state_dim:, state_dim:] + 1e-6*np.eye(action_dim)
+            
+            # 条件均值
+            mu_cond = mu_a + (Sigma_sa.T @ np.linalg.inv(Sigma_ss) @ (states[i] - mu_s).T).flatten()
+            # 条件协方差
+            sigma_cond = Sigma_aa - Sigma_sa.T @ np.linalg.inv(Sigma_ss) @ Sigma_sa
+            
+            # 确保协方差正定
+            sigma_cond = (sigma_cond + sigma_cond.T) / 2 + 1e-6*np.eye(action_dim)
+            
+            actions[i] = np.random.multivariate_normal(mu_cond, sigma_cond)
+        
         return actions
-
-
 
 
 class gmmsarsa():
@@ -168,7 +159,7 @@ class gmmsarsa():
         self.gmm.fit(state_action_data, sample_weights=weights)
 
     def train(self, env, num_samples=100, max_iter=100 ,tau=0.1, epsilon=2, tol=0.00001, axs=None):
-        state = env.reset()
+        state = env.reset('init_state')
         action = np.atleast_2d(self.gmm.conditional_sample(state.reshape(1, -1))).flatten()
 
         iter = 0

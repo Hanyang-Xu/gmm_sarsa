@@ -25,6 +25,7 @@ def load_data(file_path):
     return knee_angle.T, knee_moment.T
 
 if __name__ =='__main__':
+    # file_path = 'Datasets/merged_data.xlsx' 
     file_path = 'Datasets/AB01/Left.xlsx' 
     angle_data, moment_data = load_data(file_path)
     # 将数据转换为Tensor
@@ -56,8 +57,8 @@ if __name__ =='__main__':
             loss.backward()
             optimizer.step()
 
-        if (epoch+1) % 50 == 0:
-            print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
+        # if (epoch+1) % 50 == 0:
+        print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
 
     # 预测结果
     with torch.no_grad():

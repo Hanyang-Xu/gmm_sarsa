@@ -16,14 +16,9 @@ class Prosthesis:
         self.model.load_state_dict(torch.load('model.pth'))
         self.model.eval()  # 设置模型为评估模式
 
-    def reset(self, mode='zero'):
-        # 初始化状态为零或某个初始状态
-        if mode == 'zero':
-            init_state = np.zeros(self.promps.num_basis)
-        if mode == 'init_state':
-            init_state = np.load('trajectory_reps/init_state.npy')
+    def reset(self):
+        init_state = np.load('init_state.npy').reshape(-1)
         self.current_state = init_state
-        init_state = self.s_reducer.transform(init_state.reshape(1,-1)).reshape(-1)
         return init_state
 
     def reward(self, current_angle):
@@ -61,7 +56,8 @@ class Prosthesis:
         reward = np.exp(- (diff ** 2) / (2 * sigma ** 2))
         return reward
 
-    def step(self, action_w, axs, iter):
+    def step(self, action_w):
+        print(f"action_w:{action_w.shape}")
         action_w = self.a_reducer.inverse_trans(action_w.reshape(1,-1))
         action = self.promps.sample(action_w)
         # action here means the moment curve
@@ -73,14 +69,9 @@ class Prosthesis:
 
         # 更新当前状态
         self.current_state = predicted_angle# 根据预测结果更新状态
-        axs[0].plot(predicted_angle)  # 更新曲线的y数据
-        
         # 计算奖励
         reward = self.reward(predicted_angle)
         state_w, _= self.promps.traj2w(predicted_angle)
-        axs[1].plot(iter, reward, 'or')
-        plt.draw()  # 重新绘制图像
-        plt.pause(0.1)
 
         state_w = self.s_reducer.transform(state_w.reshape(1,-1)).reshape(-1)
-        return state_w, reward
+        return state_w, reward, predicted_angle

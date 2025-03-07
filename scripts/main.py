@@ -19,6 +19,7 @@ if __name__ == '__main__':
     gmm_components = 2
 
     # train promps model
+    
     file_path = 'Datasets/AB01/Left.xlsx' 
     angle_data, moment_data = load_data(file_path)
     promps = ProMPs(data = moment_data, basis_fun='gaussian', num_basis=10, sigma=0.1)
@@ -40,8 +41,8 @@ if __name__ == '__main__':
         t_ws.append(t_w)
 
     # set up dim_reducer
-    s_reducer = dim_reducer(g_ws, 5)
-    a_reducer = dim_reducer(t_ws, 5)
+    s_reducer = dim_reducer(g_ws, state_dim)
+    a_reducer = dim_reducer(t_ws, action_dim)
     g_ws = s_reducer.transform(g_ws)
     t_ws = s_reducer.transform(t_ws)
     init_data = np.hstack((g_ws, t_ws))
@@ -61,7 +62,7 @@ if __name__ == '__main__':
                      gamma=0.99, lambda_reg= 0.001,
                      init_data=init_data)
     
-    reward, total_reward = agent.train(env, num_samples=1000, max_iter=100, 
+    reward, total_reward = agent.train(env, num_samples=1000, max_iter=50, 
                                        tau=0.1, epsilon=100, tol=0, axs = axs) # epsilon is the explore range  
     plt.show()
 

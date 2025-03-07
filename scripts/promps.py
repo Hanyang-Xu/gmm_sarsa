@@ -110,7 +110,7 @@ class ProMPs:
         self.sig_y = 1
         #2) Train
         for it in range(max_iter):
-            # print(f"================= Iteration {it} =================")
+            print(f"================= Iteration {it} =================")
             # print(f"mu_w:{self.mu_w.shape}, sig_w:{self.sig_w.shape}, sig_y:{self.sig_y}")
             expectations = self._E_step()
             # self._M_step(expectations)
@@ -163,13 +163,14 @@ def load_data(file_path):
     return knee_angle.T, knee_moment.T
 
 if __name__ == '__main__':
-    file_path = 'Datasets/AB01/Left.xlsx' 
+    # file_path = 'Datasets/AB01/Left.xlsx' 
+    file_path = 'Datasets/merged_data.xlsx'
     angle_data, moment_data = load_data(file_path)
     promps = ProMPs(data = moment_data, basis_fun='gaussian', 
-                    num_basis=10, sigma=0.1)
+                    num_basis=8, sigma=0.1)
     Phi = promps._get_Phi()
     promps.train(max_iter=20, threshold=1e-4)
-    traj = angle_data[8]
+    traj = moment_data[8]
     w, sampled_w = promps.traj2w(traj)
     print(f"w:{w}")
     sampled_y = promps.sample(w)
