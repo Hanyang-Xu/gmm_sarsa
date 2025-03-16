@@ -9,6 +9,15 @@ def force_sym(A):
     """
     return (A + A.T) / 2.0
 
+def interpolate(start_state, end_state, num_samples):
+    """5维状态空间的线性插值"""
+    return np.linspace(
+        start_state, 
+        end_state,    
+        num_samples,  
+        axis=0        
+    )
+
 class dim_reducer():
     def __init__(self, init_data, latent_space):
         scaler = StandardScaler()

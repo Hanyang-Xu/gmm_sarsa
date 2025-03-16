@@ -16,7 +16,6 @@ if __name__ == '__main__':
     # parameters
     state_dim = 5
     action_dim = 5
-    gmm_components = 2
 
     # train promps model
     file_path = 'Datasets/AB01/Left.xlsx' 
@@ -45,6 +44,14 @@ if __name__ == '__main__':
     t_ws = a_reducer.transform(t_ws)
     init_data = np.hstack((g_ws, t_ws))
 
+    min_state= [min(col) for col in zip(*g_ws)]
+    max_state = [max(col) for col in zip(*g_ws)]
+    min_action = [min(col) for col in zip(*t_ws)]
+    max_action = [max(col) for col in zip(*t_ws)]
+
+    state_space = np.vstack((min_state, max_state))
+    action_space = np.vstack((min_action, max_action))
+
     # set up environment
     env = Prosthesis(promps=promps, 
                      target_angle=target_angle,
@@ -52,18 +59,16 @@ if __name__ == '__main__':
                      a_reducer=a_reducer)
 
     # set up the agent
-    agent = SarsaGMM(gmm_components=gmm_components, 
-                     state_dim=state_dim, 
-                     action_dim=action_dim, 
+    agent = SarsaGMM(gmm_components=2, 
+                     state_space=state_space, 
+                     action_space=action_space, 
                      poly_degree=2, 
-                     gamma=0.99, 
-                     alpha=0.0001,
+                     gamma=0.95, 
+                     alpha=0.00001,
                      init_data=init_data)
     
     agent.train(env, 
-                num_samples=100, 
+                num_samples=1000, 
                 max_iter=100, 
-                tau=1, 
-                epsilon=1, 
-                tol=0,
+                tol=0.01,
                 target_angle=target_angle)

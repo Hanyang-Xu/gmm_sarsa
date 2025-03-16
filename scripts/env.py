@@ -24,13 +24,13 @@ class Prosthesis:
     def reward(self, current_angle):
         # 计算当前角度和目标角度的差异并返回奖励
         # all + end point
-        # k = 0.9
+        # k = 0
         # max_idx = np.argmax(self.target_angle)
         # max_target = self.target_angle[max_idx]
         # max_angle = current_angle[max_idx]
         # diff = (1-k)*np.sum(np.abs(self.target_angle - current_angle)) + k*np.abs(self.target_angle[-1]-current_angle[-1])+ k*np.abs(max_angle-max_target)
         # diff = (1-k)*np.sum(np.abs(self.target_angle - current_angle)) + k*np.abs(max_angle-max_target)
-        # diff = (1-k)*np.sum(np.abs(self.target_angle - current_angle))
+        # diff = 0.1*np.sum(np.abs(self.target_angle - current_angle))
         # print(f"diff:{diff}")
 
         # four points
