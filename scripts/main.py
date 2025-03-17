@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from promps import ProMPs
-from gmm_sarsa import gmmsarsa
+from SarsaGMM import SarsaGMM
 from env import Prosthesis
 from utils import dim_reducer
 
@@ -16,10 +16,8 @@ if __name__ == '__main__':
     # parameters
     state_dim = 5
     action_dim = 5
-    gmm_components = 2
 
     # train promps model
-    
     file_path = 'Datasets/AB01/Left.xlsx' 
     angle_data, moment_data = load_data(file_path)
     promps = ProMPs(data = moment_data, basis_fun='gaussian', num_basis=10, sigma=0.1)
@@ -40,29 +38,37 @@ if __name__ == '__main__':
         t_w, _ = promps.traj2w(torque)
         t_ws.append(t_w)
 
-    # set up dim_reducer
     s_reducer = dim_reducer(g_ws, state_dim)
     a_reducer = dim_reducer(t_ws, action_dim)
     g_ws = s_reducer.transform(g_ws)
-    t_ws = s_reducer.transform(t_ws)
+    t_ws = a_reducer.transform(t_ws)
     init_data = np.hstack((g_ws, t_ws))
+
+    min_state= [min(col) for col in zip(*g_ws)]
+    max_state = [max(col) for col in zip(*g_ws)]
+    min_action = [min(col) for col in zip(*t_ws)]
+    max_action = [max(col) for col in zip(*t_ws)]
+
+    state_space = np.vstack((min_state, max_state))
+    action_space = np.vstack((min_action, max_action))
+
     # set up environment
-    env = Prosthesis(promps=promps, target_angle=target_angle, s_reducer=s_reducer, a_reducer=a_reducer)
-    init_state = env.reset('zero')
+    env = Prosthesis(promps=promps, 
+                     target_angle=target_angle,
+                     s_reducer=s_reducer,
+                     a_reducer=a_reducer)
 
     # set up the agent
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-    ax1.set_title('Angle curve')
-    ax2.set_title('Reward')
-    ax1.plot(target_angle, label='Target', linestyle='-.')
-    ax1.legend()
-    axs = [ax1, ax2]
-    agent = gmmsarsa(n_components=gmm_components, state_dim=state_dim, 
-                     action_dim=action_dim, poly_degree=2, alpha=0.001, 
-                     gamma=0.99, lambda_reg= 0.001,
+    agent = SarsaGMM(gmm_components=2, 
+                     state_space=state_space, 
+                     action_space=action_space, 
+                     poly_degree=2, 
+                     gamma=0.95, 
+                     alpha=0.00001,
                      init_data=init_data)
     
-    reward, total_reward = agent.train(env, num_samples=1000, max_iter=50, 
-                                       tau=0.1, epsilon=100, tol=0, axs = axs) # epsilon is the explore range  
-    plt.show()
-
+    agent.train(env, 
+                num_samples=1000, 
+                max_iter=100, 
+                tol=0.01,
+                target_angle=target_angle)
