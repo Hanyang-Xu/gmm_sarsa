@@ -16,7 +16,6 @@ Implements a reinforcement learning (RL) algorithm enabling prosthetic robots to
 - **Gaussian Mixture Model (GMM)** as policy (generalized Actor-Critic)
 - Online learning for adaptive parameter updates during walking
 
-![System Diagram](https://via.placeholder.com/800x400.png?text=System+Architecture)
 
 ## Key Components
 ### State-Action Representation
