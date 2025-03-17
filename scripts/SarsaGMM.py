@@ -84,12 +84,13 @@ class SarsaGMM:
         # 创建用于早停判断的滑动窗口，存储最近 10 次的 reward
         reward_window = deque(maxlen=10)
 
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+        # fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
         plt.ion() 
         ax1.set_title('Angle curve')
         # ax1.plot(target_angle, label='Target', linestyle='-.')
         ax2.set_title('Reward')
-        ax3.set_title('TD Error')
+        # ax3.set_title('TD Error')
         
         while (iter < max_iter):
             next_state, reward, actual_angle = env.step(action)
@@ -126,7 +127,7 @@ class SarsaGMM:
             ax1.plot(actual_angle, label='Actual', color='b')
             ax1.legend()
             ax2.plot(iter, reward, 'or')
-            ax3.plot(iter, self.td_error, 'ob')
+            # ax3.plot(iter, self.td_error, 'ob')
             plt.pause(0.001)  
             fig.canvas.flush_events() 
 
