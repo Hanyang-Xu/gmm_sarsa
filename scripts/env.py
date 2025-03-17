@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from env_model import TorqueToAngleLSTM  # 导入模型类
+from env_model import TorqueToAngleLSTM 
 import matplotlib.pyplot as plt
 from scipy.signal import argrelextrema
 
@@ -11,10 +11,10 @@ class Prosthesis:
         self.s_reducer = s_reducer
         self.a_reducer = a_reducer
         self.current_state = None
-        # 只加载一次模型
+
         self.model = TorqueToAngleLSTM()
         self.model.load_state_dict(torch.load('model.pth'))
-        self.model.eval()  # 设置模型为评估模式
+        self.model.eval()  
 
     def reset(self):
         init_state = np.load('init_state.npy').reshape(-1)
@@ -22,7 +22,6 @@ class Prosthesis:
         return init_state
 
     def reward(self, current_angle):
-        # 计算当前角度和目标角度的差异并返回奖励
         # all + end point
         # k = 0
         # max_idx = np.argmax(self.target_angle)
@@ -41,7 +40,7 @@ class Prosthesis:
         diff2 = np.abs(self.target_angle[min_idxs[0]]-current_angle[min_idxs[0]])
         diff3 = np.abs(self.target_angle[max_idxs[1]]-current_angle[max_idxs[1]])
         diff4 = np.abs(self.target_angle[-1]-current_angle[-1])
-        weight = [1, 1, 1, 1]
+        weight = [0, 1.5, 2.5, 0]
         diff = diff1*weight[0]+diff2*weight[1]+diff3*weight[2]+diff4*weight[3]
 
         # diff based on time
@@ -50,9 +49,7 @@ class Prosthesis:
         # diff = (tar_max_idx - max_idx)*10
 
         print(f"diff:{diff}") 
-
-        # 使用负二次函数计算奖励
-        sigma = 50
+        sigma = 30
         reward = np.exp(- (diff ** 2) / (2 * sigma ** 2))
         return reward
 
@@ -60,16 +57,12 @@ class Prosthesis:
         print(f"action_w:{action_w.shape}")
         action_w = self.a_reducer.inverse_trans(action_w.reshape(1,-1))
         action = self.promps.sample(action_w)
-        # action here means the moment curve
-        action_tensor = torch.tensor(action, dtype=torch.float32).view(1, -1, 1)  # 调整为 (batch_size, sequence_length, 1)
+        action_tensor = torch.tensor(action, dtype=torch.float32).view(1, -1, 1)  
 
-        # 使用模型预测角度或力矩
-        with torch.no_grad():  # 不需要计算梯度
-            predicted_angle = self.model(action_tensor).numpy().flatten()  # 假设预测是角度
+        with torch.no_grad(): 
+            predicted_angle = self.model(action_tensor).numpy().flatten() 
 
-        # 更新当前状态
-        self.current_state = predicted_angle# 根据预测结果更新状态
-        # 计算奖励
+        self.current_state = predicted_angle
         reward = self.reward(predicted_angle)
         state_w, _= self.promps.traj2w(predicted_angle)
 

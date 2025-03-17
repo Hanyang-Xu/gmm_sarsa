@@ -24,7 +24,7 @@ if __name__ == '__main__':
     promps.train(max_iter=20, threshold=1e-4)
 
     # choose target angle curve
-    target_traj = angle_data[1]
+    target_traj = angle_data[18]
     w, sampled_w = promps.traj2w(target_traj)
     target_angle = promps.sample(w)
 
@@ -59,11 +59,11 @@ if __name__ == '__main__':
                      a_reducer=a_reducer)
 
     # set up the agent
-    agent = SarsaGMM(gmm_components=2, 
+    agent = SarsaGMM(gmm_components=3, 
                      state_space=state_space, 
                      action_space=action_space, 
                      poly_degree=2, 
-                     gamma=0.95, 
+                     gamma=0.99, 
                      alpha=0.00001,
                      init_data=init_data)
     

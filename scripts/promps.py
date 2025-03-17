@@ -49,12 +49,11 @@ class ProMPs:
             return Phi
 
     def _E_step(self):
-        #2) Load some variables
         inv_sig_w = np.linalg.inv(self.sig_w)
         # inv_sig_y = np.linalg.inv(self.sig_y)
         inv_sig_y = 1/self.sig_y
         Phi = self._get_Phi()
-        #3) Compute expectations
+
         w_means = []
         w_covs = []
         for n in range(self.data.shape[0]):
@@ -78,14 +77,11 @@ class ProMPs:
         w_covs = expectations['w_covs']
         K = self.num_basis
 
-        #1) Optimize mu_w
         mu_w = sum(w_means)/self.N
-        #2) Optimize Sigma_w
         sig_w = np.zeros((K,K))
         for n in range(self.N):
             tmp = w_covs[n] + np.dot((w_means[n]-mu_w), (w_means[n]-mu_w).T)
             sig_w = sig_w + tmp
-        #3) Optimize Sigma_y
         diff_y = 0
         uncert_w_y = 0
         for n in range(self.N):
@@ -94,7 +90,7 @@ class ProMPs:
                 uncert_w_y += np.dot(np.dot(Phi[n][t],w_covs[n]),Phi[n][t].T)
         sig_y = np.squeeze((diff_y + uncert_w_y) / (self.N * self.T))
         # print(f"sig_y:{sig_y}")
-        #4) Update
+
         self.mu_w = mu_w
         self.sig_w = sig_w
         y_diff = self.sig_y - sig_y
@@ -104,11 +100,9 @@ class ProMPs:
             return True
 
     def _EM_training(self, max_iter):
-        #1) Initialize
         self.mu_w = np.zeros((self.num_basis,1))
         self.sig_w = self.sig_w = np.eye(self.num_basis) * 1e-6
         self.sig_y = 1
-        #2) Train
         for it in range(max_iter):
             print(f"================= Iteration {it} =================")
             # print(f"mu_w:{self.mu_w.shape}, sig_w:{self.sig_w.shape}, sig_y:{self.sig_y}")

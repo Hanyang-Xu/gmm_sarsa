@@ -5,12 +5,9 @@ from sklearn.preprocessing import StandardScaler
 
 
 def force_sym(A):
-    """ Returns a symmetric matrix from the received matrix
-    """
     return (A + A.T) / 2.0
 
 def interpolate(start_state, end_state, num_samples):
-    """5维状态空间的线性插值"""
     return np.linspace(
         start_state, 
         end_state,    
