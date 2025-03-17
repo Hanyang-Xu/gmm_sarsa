@@ -22,7 +22,7 @@ Implements a reinforcement learning (RL) algorithm enabling prosthetic robots to
 ### State-Action Representation
 | Component       | Description                                                                 |
 |-----------------|-----------------------------------------------------------------------------|
-| **State**       | Joint angle trajectory parameters extracted via ProMPs + PCA dimensionality reduction |
+| **State**       | Joint angle trajectory parameters extracted via ProMPs + PCA reduction |
 | **Action**      | Joint torque trajectory parameters extracted via ProMPs + PCA reduction    |
 
 ## Methodology
