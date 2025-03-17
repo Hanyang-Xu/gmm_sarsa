@@ -47,5 +47,5 @@ Implements a reinforcement learning (RL) algorithm enabling prosthetic robots to
 - *Implementation:* [`utils.py`](scripts/utils.py)
 
 ## Implementation Details
-- Implement [`main_xhy.py`](scripts/main_xhy.py) to run the whole learning frame, result is as follows:
+- Implement [`main.py`](scripts/main.py) to run the whole learning frame, result is as follows:
 ![Result Diagram](pictures/result2.png)
