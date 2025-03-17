@@ -48,4 +48,4 @@ Implements a reinforcement learning (RL) algorithm enabling prosthetic robots to
 
 ## Implementation Details
 - Implement [`main_xhy.py`](scripts/main_xhy.py) to run the whole learning frame, result is as follows:
-![System Diagram](https://via.placeholder.com/800x400.png?text=System+Architecture)
+![Result Diagram](pictures/result2.png)
